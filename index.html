@@ -1,0 +1,530 @@
+/<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Telegram Pro Bingo</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #3b82f6;
+            --accent: #f59e0b;
+            --success: #10b981;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Header & Controls */
+        .header {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card-bg);
+            padding: 14px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            margin-bottom: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title {
+            font-size: 1.2rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, #60a5fa, #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        select, button {
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: none;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        select {
+            background: #334155;
+            color: white;
+            outline: none;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-start:disabled {
+            background: #475569;
+            cursor: not-allowed;
+        }
+
+        .btn-reset {
+            background: #ef4444;
+            color: white;
+        }
+
+        /* Caller Display */
+        .caller-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #0f172a;
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+
+        .current-ball {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #fbbf24, #d97706);
+            color: #0f172a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+            animation: pop 0.3s ease;
+        }
+
+        .current-ball span:first-child { font-size: 0.75rem; line-height: 1; }
+        .current-ball span:last-child { font-size: 1.3rem; line-height: 1.1; }
+
+        .recent-balls {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            max-width: 72%;
+        }
+
+        .mini-ball {
+            min-width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: #334155;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #e2e8f0;
+        }* Cartela Grid Layout (1 to 4 Cards) */
+        .cards-container {
+            width: 100%;
+            max-width: 600px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 12px;
+        }
+
+        .cartela {
+            background: var(--card-bg);
+            border-radius: 14px;
+            padding: 10px;
+            border: 2px solid #334155;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: transform 0.2s, border-color 0.3s;
+        }
+
+        .cartela.winner {
+            border-color: var(--success);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+            animation: pulse 1s infinite;
+        }
+
+        .cartela-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .bingo-letters {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+            margin-bottom: 4px;
+            text-align: center;
+            font-weight: 900;
+            font-size: 1rem;
+        }
+
+        .letter-b { color: #3b82f6; }
+        .letter-i { color: #ef4444; }
+        .letter-n { color: #10b981; }
+        .letter-g { color: #f59e0b; }
+        .letter-o { color: #a855f7; }
+
+        .grid-5x5 {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            background: #0f172a;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #cbd5e1;
+            transition: all 0.25s;
+        }
+
+        .cell.marked {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            transform: scale(0.95);
+            box-shadow: inset 0 0 6px rgba(255,255,255,0.3);
+        }
+
+        .cell.free {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #0f172a;
+            font-size: 0.7rem;
+            font-weight: 900;
+        }
+
+        .cell.win-line {
+            background: linear-gradient(135deg, #10b981, #059669) !important;
+            color: white !important;
+        }
+
+        /* Winner Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.9);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 2px solid var(--success);
+            border-radius: 20px;
+            padding: 28px;
+            text-align: center;
+            max-width: 360px;
+            width: 100%;
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.4);
+        }
+
+        .modal h1 {
+            font-size: 2.5rem;
+            color: var(--success);
+            margin-bottom: 10px;
+        }
+
+        .modal p {
+            color: #e2e8f0;
+            margin-bottom: 20px;
+            font-size: 1.05rem;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(0.5); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="top-bar">
+            <div class="title">⚡️ PRO BINGO</div>
+            <div id="player-name" style="font-size: 0.85rem; color: #94a3b8;">ተጫዋች</div>
+        </div><div class="controls">
+            <select id="card-count" onchange="initGame()">
+                <option value="1">1 ካርቴላ</option>
+                <option value="2">2 ካርቴላ</option>
+                <option value="3">3 ካርቴላ</option>
+                <option value="4" selected>4 ካርቴላ</option>
+            </select>
+            <button id="start-btn" class="btn-start" onclick="startGame()">ጨዋታ ጀምር</button>
+            <button class="btn-reset" onclick="initGame()">አዲስ</button>
+        </div>
+
+        <div class="caller-box">
+            <div class="current-ball" id="current-ball">
+                <span>BINGO</span>
+                <span>--</span>
+            </div>
+            <div class="recent-balls" id="recent-balls"></div>
+        </div>
+    </div>
+
+    <div class="cards-container" id="cards-container"></div>
+
+    <!-- Auto-Bingo Winner Popup -->
+    <div class="modal" id="winner-modal">
+        <div class="modal-content">
+            <h1>🎉 BINGO! 🎉</h1>
+            <p id="winner-text">እንኳን ደስ አለዎት! በካርቴላ #1 አሸንፈዋል!</p>
+            <button class="btn-start" style="width: 100%;" onclick="closeModalAndReset()">እንደገና ይጫወቱ</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Telegram Mini App
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            document.getElementById('player-name').innerText = "👤 " + tg.initDataUnsafe.user.first_name;
+        }
+
+        let cards = [];
+        let calledNumbers = [];
+        let numberPool = [];
+        let gameInterval = null;
+        let isGameRunning = false;
+
+        function getLetter(num) {
+            if (num <= 15) return 'B';
+            if (num <= 30) return 'I';
+            if (num <= 45) return 'N';
+            if (num <= 60) return 'G';
+            return 'O';
+        }
+
+        function generateCartelaData(id) {
+            const ranges = [
+                [1, 15], [16, 30], [31, 45], [46, 60], [61, 75]
+            ];
+            let grid = Array.from({ length: 5 }, () => Array(5).fill(null));
+
+            for (let col = 0; col < 5; col++) {
+                let [min, max] = ranges[col];
+                let nums = [];
+                while (nums.length < 5) {
+                    let r = Math.floor(Math.random() * (max - min + 1)) + min;
+                    if (!nums.includes(r)) nums.push(r);
+                }
+                for (let row = 0; row < 5; row++) {
+                    if (row === 2 && col === 2) {
+                        grid[row][col] = { num: 'FREE', marked: true, isFree: true };
+                    } else {
+                        grid[row][col] = { num: nums[row], marked: false, isFree: false };
+                    }
+                }
+            }
+            return { id, grid, won: false };
+        }
+
+        function initGame() {
+            clearInterval(gameInterval);
+            isGameRunning = false;
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('start-btn').innerText = "ጨዋታ ጀምር";
+            document.getElementById('current-ball').innerHTML = <span>BINGO</span><span>--</span>;
+            document.getElementById('recent-balls').innerHTML = '';
+
+            calledNumbers = [];
+            numberPool = Array.from({ length: 75 }, (_, i) => i + 1);
+            // Shuffle pool
+            for (let i = numberPool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [numberPool[i], numberPool[j]] = [numberPool[j], numberPool[i]];
+            }
+
+            const count = parseInt(document.getElementById('card-count').value);
+            cards = [];
+            for (let i = 1; i <= count; i++) {
+                cards.push(generateCartelaData(i));
+            }
+            renderCards();
+        }
+
+        function renderCards() {
+            const container = document.getElementById('cards-container');
+            container.innerHTML = '';[11/12/2026 4:07 PM] Teddy21tedda: cards.forEach(card => {
+                const cardEl = document.createElement('div');
+                cardEl.className = cartela ${card.won ? 'winner' : ''};
+                cardEl.id = card-${card.id};
+
+                let html = 
+                    <div class="cartela-header">
+                        <span>ካርቴላ #${card.id}</span>
+                        <span>ID: ${100 + card.id}</span>
+                    </div>
+                    <div class="bingo-letters">
+                        <span class="letter-b">B</span>
+                        <span class="letter-i">I</span>
+                        <span class="letter-n">N</span>
+                        <span class="letter-g">G</span>
+                        <span class="letter-o">O</span>
+                    </div>
+                    <div class="grid-5x5">
+                ;
+
+                for (let r = 0; r < 5; r++) {
+                    for (let c = 0; c < 5; c++) {
+                        const cell = card.grid[r][c];
+                        const classes = ['cell'];
+                        if (cell.isFree) classes.push('free');
+                        else if (cell.marked) classes.push('marked');
+                        if (cell.winLine) classes.push('win-line');
+
+                        html += <div class="${classes.join(' ')}">${cell.num}</div>;
+                    }
+                }
+
+                html += </div>;
+                cardEl.innerHTML = html;
+                container.appendChild(cardEl);
+            });
+        }
+
+        function startGame() {
+            if (isGameRunning) return;
+            isGameRunning = true;
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('start-btn').innerText = "እየተጫወተ ነው...";
+
+            drawNextNumber();
+            gameInterval = setInterval(drawNextNumber, 2200); // በየ 2.2 ሰከንዱ ቁጥር ያወጣል
+        }
+
+        function drawNextNumber() {
+            if (numberPool.length === 0) {
+                clearInterval(gameInterval);
+                return;
+            }
+
+            const num = numberPool.pop();
+            const letter = getLetter(num);
+            calledNumbers.unshift(${letter}-${num});
+
+            // Update UI Caller
+            const ballEl = document.getElementById('current-ball');
+            ballEl.innerHTML = <span>${letter}</span><span>${num}</span>;
+            ballEl.style.animation = 'none';
+            ballEl.offsetHeight; // trigger reflow
+            ballEl.style.animation = 'pop 0.3s ease';
+
+            const recentEl = document.getElementById('recent-balls');
+            recentEl.innerHTML = calledNumbers.slice(1, 7)
+                .map(b => <div class="mini-ball">${b}</div>).join('');
+
+            // Auto-Mark & Auto-Check Bingo on all cards
+            let winningCard = null;
+            cards.forEach(card => {
+                for (let r = 0; r < 5; r++) {
+                    for (let c = 0; c < 5; c++) {
+                        if (card.grid[r][c].num === num) {
+                            card.grid[r][c].marked = true;
+                        }
+                    }
+                }
+                if (!winningCard && checkAutoBingo(card)) {
+                    card.won = true;
+                    winningCard = card;
+                }
+            });
+
+            renderCards();
+
+            if (winningCard) {
+                clearInterval(gameInterval);
+                isGameRunning = false;
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+                setTimeout(() => {
+                    document.getElementById('winner-text').innerText = 
+                        እንኳን ደስ አለዎት! በካርቴላ #${winningCard.id} ቢንጎ (BINGO) ብለዋል!;
+                    document.getElementById('winner-modal').style.display = 'flex';
+                }, 600);
+            }
+        }
+[11/12/2026 4:07 PM] Teddy21tedda: function checkAutoBingo(card) {
+            const g = card.grid;
+            // Check Rows
+            for (let r = 0; r < 5; r++) {
+                if (g[r].every(c => c.marked)) {
+                    g[r].forEach(c => c.winLine = true);
+                    return true;
+                }
+            }
+            // Check Columns
+            for (let c = 0; c < 5; c++) {
+                if ([0,1,2,3,4].every(r => g[r][c].marked)) {
+                    [0,1,2,3,4].forEach(r => g[r][c].winLine = true);
+                    return true;
+                }
+            }
+            // Check Diagonals
+            if ([0,1,2,3,4].every(i => g[i][i].marked)) {
+                [0,1,2,3,4].forEach(i => g[i][i].winLine = true);
+                return true;
+            }
+            if ([0,1,2,3,4].every(i => g[i][4 - i].marked)) {
+                [0,1,2,3,4].forEach(i => g[i][4 - i].winLine = true);
+                return true;
+            }
+            return false;
+        }
+
+        function closeModalAndReset() {
+            document.getElementById('winner-modal').style.display = 'none';
+            initGame();
+        }
+
+        // Start with 4 cards ready
+        initGame();
+    </script>
+</body>
+</html>
